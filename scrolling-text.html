@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+        }
+      
+    </style>
+</head>
+
+<body>
+    <p>
+        <br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br><br>
+        /* <br><br>
+UNPREDICTABLE ATMOSPHERE WORKSHOP <br>
+OCT2023<br>
+<br>
+This Workshop si written by Lucia Rebolino for the Water Index Workshop led by Elisa Cristiana Cattaneo and Tim Power at
+Domus Academy Milan for the Master in Urban Vision & Architectural Design.
+<br><br>
+------------------------------------------------------------------------
+<br>
+Schedule<br>
+Friday, October 13, 2023<br><br>
+11:45–11:55 — Introduction<br>
+11:55–12:30 — Lecture Unpredictable Atmosphere<br>
+12:30–12:35 — Questions (break) or zoom chat :)<br>
+12:35–12:45 — Introduction to GOES and NASA open resources<br>
+12:45–13:00 — Exercise 1 - Hurricanes data <br>
+13:00–13:20 — Exercise 2 - Code<br>
+13:20–13:30 — Are.na <br>
+13:30–13:45 — Play with the platform<br>
+
+------------------------------------------------------------------------
+<br><br>
+
+This JavaScript code snippet is meant for use with Google Earth Engine. 
+It includes several functions for manipulating and visualizing satellite and precipitation data.
+<br><br>
+The main goal of this exercise is to retrieve images from optical and radar satellites of the same event to speculate 
+and experiment with aesthetic visualizations, looking at the atmosphere from above and below, highlighting 
+the atmosphere and the spectrum under different features.
+<br><br>
+To be able to draw the water vapor follow the TODO STEPS in the code<br><br>
+STEP 0-pick an atmospheric event <br>
+STEP 1-draw geometry<br>
+STEP 2-set the date and time<br>
+STEP 3-change color palette<br>
+STEP 4-export gifs<br>
+STEP 5-upload on Are.na<br><br>
+*/
+
+<br><br>
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+<br><br>
+TODO STEP1:<br> Once you have tracked the storm, 
+            draw the same geometry on Google Maps below. Use the square button and try to keep the selection as 
+           close to a square shape as possible. 
+           Check that the layer name is 'geometry'.
+<br><br><br>
+Watch the atmosphere from above, true and visible colors - GOES SATELLITE
+<br><br><br>
+/* 
+This function is used to apply scaling and offset to the imagery data to convert the digital numbers into meaningful values
+*/ 
+<br>
+<br>
+
+var applyScaleAndOffset = function(img) {<br>
+  var getFactorImg = function(factorNames) {<br>
+    var factorList = img.toDictionary().select(factorNames).values();<br>
+    return ee.Image.constant(factorList);<br>
+  };<br>
+  var scaleImg = getFactorImg(['CMI_C.._scale']);<br>
+  var offsetImg = getFactorImg(['CMI_C.._offset']);<br>
+  var scaled = img.select('CMI_C..').multiply(scaleImg).add(offsetImg);<br>
+  return img.addBands({srcImg: scaled, overwrite: true});<br>
+};<br><br><br>
+
+
+/* 
+The function creates a synthetic green band using the red, near-infrared (NIR), and blue bands. 
+This can be useful for visualizing satellite imagery in true or false color.
+*/ 
+<br><br><br><br>
+
+var addGreenBand = function(img) {<br>
+  var green = img.expression({<br>
+    expression: 'CMI_GREEN = 0.45 * red + 0.10 * nir + 0.45 * blue',<br>
+    map: {<br>
+      blue: img.select('CMI_C01'),<br>
+      red: img.select('CMI_C02'),<br>
+      nir: img.select('CMI_C03')<br>
+    }<br>
+  });<br>
+  return img.addBands(green);<br>
+};<br><br><br><br>
+
+
+/*
+This function scales selected bands for better visualization.
+It applies a logarithmic transformation, interpolates, and unmask the values.
+*/
+<br><br><br><br>
+
+var scaleForVis = function(img) {<br>
+  return img.select(['CMI_C01', 'CMI_GREEN', 'CMI_C02', 'CMI_C03', 'CMI_C05'])<br>
+              .resample('bicubic')<br>
+              .log10()<br>
+              .interpolate([-1.6, 0.176], [0, 1], 'clamp')<br>
+              .unmask(0)<br>
+              .set('system:time_start', img.get('system:time_start'));<br>
+};<br><br><br><br>
+
+/*
+A wrapper function that applies all of the above processes to an image.
+*/
+<br><br><br><br>
+
+var processForVis = function(img) {<br>
+  return scaleForVis(addGreenBand(applyScaleAndOffset(img)));<br>
+};
+
+<br><br><br><br>
+/*
+This part of the code retrieves a collection of CMI images from NOAA/GOES/16/MCMIPF, 
+filters them by date, and processes them for visualization using the processForVis function.
+*/
+<br><br><br><br>
+
+var geosVisCol = ee.ImageCollection('NOAA/GOES/16/MCMIPF')<br>
+                     .filterDate('2021-05-22T15:00', '2021-05-23T02:00')<br>
+                     //TODO STEP 2: Change date and time to correspond with the event of the storm or hurricane you selected.<br>
+                     .map(processForVis);<br><br><br><br>
+ 
+ 
+/*
+Defines the visualization parameters and prints a thumbnail of the animation to the console.
+*/
+<br><br><br><br>
+
+var visParams = {<br>
+  bands: ['CMI_C02', 'CMI_GREEN', 'CMI_C01'],<br>
+  min: 0,<br>
+  max: 0.8,<br>
+  gamma: 0.8,<br>
+  dimensions: 600,<br>
+  framesPerSecond: 10,<br>
+  region: geometry,<br>
+  crs: 'EPSG:3857'<br>
+};<br>
+print(ui.Thumbnail(geosVisCol, visParams));<br><br><br><br>
+TODO STEP4: Export the GIF visualized in the Console section on the right.<br><br><br><br>
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+<br><br><br><br>
+
+Getting Precipitation Data from below, radar images - JAXA Global Rainfall Watch
+<br><br><br><br>
+/*
+Retrieves a collection of precipitation data, filters it by date, and selects the 'hourlyPrecipRate' band.
+*/
+<br><br><br>
+var precipitation = ee.ImageCollection('JAXA/GPM_L3/GSMaP/v6/operational')<br>
+                 .filterDate('2021-05-22T15:00', '2021-05-23T02:00')<br>
+                 //TODO STEP 2: Change date and time to correspond with the event of the storm or hurricane you selected.<br>
+                 .select('hourlyPrecipRate');<br><br>
+
+var precipitationVis = {<br>
+  min: 0.0,<br>
+  max: 4.0,<br>
+  palette: ['000000', 'FFA8BD', 'DB93C0', 'B67EC3', '9269C6','6D54C9','493FCC','242ACF'], <br><br><br><br>
+TODO STEP3: Change the color codes of the palette. <br><br><br><br>
+
+/*
+Converts each image in the precipitation data collection into an RGB visualization image.
+*/
+<br><br><br><br>
+
+var precipitationVis = precipitation.map(function(img) {<br>
+  return img.visualize(precipitationVis);<br>
+});<br><br><br><br>
+
+/*
+Defines the animation parameters and prints a thumbnail of the precipitation animation to the console.
+*/
+<br><br><br><br>
+
+var videoArgs = {<br>
+  dimensions: 600,<br>
+  region: geometry,<br>
+  framesPerSecond: 10,<br>
+  crs: 'EPSG:3857'<br>
+};<br>
+print(ui.Thumbnail(precipitationVis, videoArgs));<br><br><br><br>
+TODO STEP4: Export the GIF visualized in the Console section on the right.
+<br><br><br><br>
+/*
+TODO STEP5:<br>
+Once exported the two gifs, please rename them:<br>
+The optical image:                                yourname-hurricanename-a<br>
+The radar image:                                  yourname-hurricanename-b<br>
+(keep the lowcase)
+<br><br>
+--------> now you are ready to add them as new blocks in our Are.na channel Unpredictable Atmosphere - Workshop
+here is the link:
+<br><br>
+https://www.are.na/lucia-rebolino/unpredictable-atmosphere-workshop<br><br>
+*/<br><br>
+
+/*THE END YUPPY*/
+    
+    </p>
+</body>
+
+</html>

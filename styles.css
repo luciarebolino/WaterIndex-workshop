@@ -1,0 +1,64 @@
+body {
+    font-family: Arial, sans-serif;
+        margin: 0;
+        height: 100%;
+    }
+
+
+.svg-container {
+    height:max-content;
+    margin: auto;
+    z-index: 2; 
+}
+/* Style for the control panel containing the checkboxes */
+.control-panel {
+    font: Arial;
+    font-size: 20px;
+    position: absolute;
+    top: 20px;
+    left: 5px;
+    padding: 10px;
+    z-index: 1100; /* Ensure the panel is displayed above the SVG */
+}
+
+/* Style for individual checkboxes and labels */
+.control-panel input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.control-panel label {
+    cursor: pointer;
+}
+
+.svg-container {
+    display: block; /* Changed from inline-block to block */
+    position: relative;
+    width: 80%;
+    margin: auto; /* Added this to center the container */
+    overflow: hidden;
+}
+
+img {
+    max-width: 150px;
+    max-height: 150px;
+    z-index: 10000000;
+    border: none;
+}
+
+
+
+#scrollable-text-box {
+    position: absolute;
+    font: Arial;
+    font-size: 20px;
+    top: 0;
+    right: 15px; 
+    width: 800px; 
+    height: 100%; 
+    z-index: 2;  
+}
+iframe {
+    height: 500px; /* Adjust the height as needed */
+    width: 100%;
+    overflow: auto;
+}
